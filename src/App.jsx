@@ -150,6 +150,9 @@ export default function App() {
   const [rejectReason, setRejectReason] = useState('')
   const [showPenaltyModal, setShowPenaltyModal] = useState(false)
   const [confirmModal, setConfirmModal] = useState(null)
+  const [gerirModal, setGerirModal] = useState(null) // acao sendo editada
+  const [gerirForm, setGerirForm] = useState({ titulo: '', icone: '', xp: '', tipo: 'positive' })
+  const [showGerirForm, setShowGerirForm] = useState(false)
   const [weeklyBonus, setWeeklyBonus] = useState(false)
   const [levelUpSprite, setLevelUpSprite] = useState(false)
   const toastTimer = useRef(null)
@@ -393,6 +396,42 @@ export default function App() {
     showToast('AÇÃO DESFEITA', 'info')
   }
 
+  async function saveAcao() {
+    if (!gerirForm.titulo.trim() || !gerirForm.icone.trim() || !gerirForm.xp) return
+    const xpVal = Number(gerirForm.xp)
+    if (gerirModal) {
+      // Editar existente
+      const { data } = await supabase.from('acoes').update({
+        titulo: gerirForm.titulo,
+        icone: gerirForm.icone,
+        xp: xpVal,
+        tipo: gerirForm.tipo,
+      }).eq('id', gerirModal.id).select().single()
+      if (data) setAcoes(a => a.map(x => x.id === data.id ? data : x))
+      showToast('AÇÃO ATUALIZADA!', 'pos')
+    } else {
+      // Nova ação
+      const { data } = await supabase.from('acoes').insert({
+        titulo: gerirForm.titulo,
+        icone: gerirForm.icone,
+        xp: xpVal,
+        tipo: gerirForm.tipo,
+        ativo: true,
+      }).select().single()
+      if (data) setAcoes(a => [...a, data])
+      showToast('AÇÃO CRIADA! ★', 'pos')
+    }
+    setGerirModal(null)
+    setShowGerirForm(false)
+    setGerirForm({ titulo: '', icone: '', xp: '', tipo: 'positive' })
+  }
+
+  async function toggleAcao(acao) {
+    const { data } = await supabase.from('acoes').update({ ativo: !acao.ativo }).eq('id', acao.id).select().single()
+    if (data) setAcoes(a => a.map(x => x.id === data.id ? data : x))
+    showToast(data.ativo ? 'AÇÃO ATIVADA' : 'AÇÃO DESATIVADA', 'info')
+  }
+
   const roleColor = { oraculo: '#fbbf24', guardiao: '#60a5fa', jogador: '#c084fc' }
   const roleLabel = { oraculo: '🔮 ORÁCULO', guardiao: '⚔ GUARDIÃO', jogador: '★ JOGADOR' }
 
@@ -455,6 +494,7 @@ export default function App() {
             { key: 'acoes',      label: '⚔ AÇÕES' },
             { key: 'desejos',    label: `★ DESEJOS${pendingWishes > 0 ? ` (${pendingWishes})` : ''}` },
             { key: 'penalidades',label: `⚠ PENAS${activePenalties > 0 ? ` (${activePenalties})` : ''}` },
+            { key: 'gerir',      label: '⚙ GERIR' },
             { key: 'historico',  label: '📜 LOG' },
           ] : [
             { key: 'desejos',    label: '★ DESEJOS' },
@@ -560,6 +600,98 @@ export default function App() {
             <div style={{ display: 'grid', gap: 14 }}>
               {penalidades.map(p => (
                 <PenaltyCard key={p.id} penalty={p} role={user.role} onConcluir={concluirPenalty} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── GERIR ── */}
+        {tab === 'gerir' && isOraculo && (
+          <div style={{ padding: '16px 12px' }}>
+            <button onClick={() => { setGerirModal(null); setGerirForm({ titulo: '', icone: '', xp: '', tipo: 'positive' }); setShowGerirForm(true) }} style={{
+              display: 'block', width: '100%', marginBottom: 16, padding: 12,
+              background: '#1a1400', border: '2px solid #fbbf24', color: '#fbbf24',
+              fontFamily: "'Press Start 2P', monospace", fontSize: '0.4rem', cursor: 'pointer',
+            }}>+ NOVA AÇÃO</button>
+
+            {showGerirForm && (
+              <div style={{ background: '#0a0a18', border: '2px solid #2a1a4a', padding: 16, marginBottom: 16 }}>
+                <div style={{ fontSize: '0.38rem', color: '#c084fc', letterSpacing: 2, marginBottom: 12 }}>
+                  {gerirModal ? '✦ EDITAR AÇÃO' : '✦ NOVA AÇÃO'}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  <input placeholder="EMOJI" value={gerirForm.icone} onChange={e => setGerirForm(f => ({ ...f, icone: e.target.value }))}
+                    style={{ width: 60, background: '#080810', border: '2px solid #1a1a2e', color: '#e2d9c5', padding: '10px 8px', textAlign: 'center', fontSize: '1.2rem' }} />
+                  <input placeholder="NOME DA AÇÃO" value={gerirForm.titulo} onChange={e => setGerirForm(f => ({ ...f, titulo: e.target.value }))}
+                    style={{ flex: 1, background: '#080810', border: '2px solid #1a1a2e', color: '#e2d9c5', padding: '10px 8px' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <input type="number" placeholder="XP (ex: 10 ou -12)" value={gerirForm.xp} onChange={e => setGerirForm(f => ({ ...f, xp: e.target.value }))}
+                    style={{ flex: 1, background: '#080810', border: '2px solid #1a1a2e', color: '#e2d9c5', padding: '10px 8px' }} />
+                  <select value={gerirForm.tipo} onChange={e => setGerirForm(f => ({ ...f, tipo: e.target.value }))}
+                    style={{ flex: 1, background: '#080810', border: '2px solid #1a1a2e', color: '#e2d9c5', padding: '10px 8px' }}>
+                    <option value="positive">BÔNUS</option>
+                    <option value="negative">PENALIDADE</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={saveAcao} style={{
+                    flex: 1, padding: '10px 0', background: '#1a1400', border: '2px solid #fbbf24',
+                    color: '#fbbf24', fontFamily: "'Press Start 2P', monospace", fontSize: '0.38rem', cursor: 'pointer',
+                  }}>★ SALVAR</button>
+                  <button onClick={() => { setShowGerirForm(false); setGerirModal(null) }} style={{
+                    flex: 1, padding: '10px 0', background: '#0d0d1a', border: '2px solid #374151',
+                    color: '#6b7280', fontFamily: "'Press Start 2P', monospace", fontSize: '0.38rem', cursor: 'pointer',
+                  }}>CANCELAR</button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ fontSize: '0.34rem', color: '#4b5563', letterSpacing: 2, marginBottom: 10 }}>── BÔNUS ──</div>
+            <div style={{ display: 'grid', gap: 6, marginBottom: 16 }}>
+              {acoes.filter(a => a.tipo === 'positive').map(a => (
+                <div key={a.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                  background: a.ativo ? '#1a1400' : '#0d0d0d',
+                  border: `2px solid ${a.ativo ? '#fbbf2444' : '#2a2a2a'}`,
+                  opacity: a.ativo ? 1 : 0.5,
+                }}>
+                  <div style={{ fontSize: '1rem' }}>{a.icone}</div>
+                  <div style={{ flex: 1, fontFamily: "'Press Start 2P', monospace", fontSize: '0.34rem', color: '#c4b5a0', lineHeight: 1.8 }}>{a.titulo}</div>
+                  <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.5rem', color: '#fbbf24', marginRight: 8 }}>+{a.xp}</div>
+                  <button onClick={() => { setGerirModal(a); setGerirForm({ titulo: a.titulo, icone: a.icone, xp: String(a.xp), tipo: a.tipo }); setShowGerirForm(true) }} style={{
+                    padding: '4px 6px', background: 'transparent', border: '1px solid #2a1a4a',
+                    color: '#c084fc', fontFamily: "'Press Start 2P', monospace", fontSize: '0.32rem', cursor: 'pointer',
+                  }}>✎</button>
+                  <button onClick={() => toggleAcao(a)} style={{
+                    padding: '4px 6px', background: 'transparent', border: `1px solid ${a.ativo ? '#374151' : '#166534'}`,
+                    color: a.ativo ? '#4b5563' : '#4ade80', fontFamily: "'Press Start 2P', monospace", fontSize: '0.32rem', cursor: 'pointer',
+                  }}>{a.ativo ? '○' : '●'}</button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ fontSize: '0.34rem', color: '#f87171', letterSpacing: 2, marginBottom: 10 }}>── PENALIDADES ──</div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              {acoes.filter(a => a.tipo === 'negative').map(a => (
+                <div key={a.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                  background: a.ativo ? '#1a0303' : '#0d0d0d',
+                  border: `2px solid ${a.ativo ? '#7f1d1d44' : '#2a2a2a'}`,
+                  opacity: a.ativo ? 1 : 0.5,
+                }}>
+                  <div style={{ fontSize: '1rem' }}>{a.icone}</div>
+                  <div style={{ flex: 1, fontFamily: "'Press Start 2P', monospace", fontSize: '0.34rem', color: '#c4b5a0', lineHeight: 1.8 }}>{a.titulo}</div>
+                  <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.5rem', color: '#f87171', marginRight: 8 }}>{a.xp}</div>
+                  <button onClick={() => { setGerirModal(a); setGerirForm({ titulo: a.titulo, icone: a.icone, xp: String(a.xp), tipo: a.tipo }); setShowGerirForm(true) }} style={{
+                    padding: '4px 6px', background: 'transparent', border: '1px solid #2a1a4a',
+                    color: '#c084fc', fontFamily: "'Press Start 2P', monospace", fontSize: '0.32rem', cursor: 'pointer',
+                  }}>✎</button>
+                  <button onClick={() => toggleAcao(a)} style={{
+                    padding: '4px 6px', background: 'transparent', border: `1px solid ${a.ativo ? '#374151' : '#166534'}`,
+                    color: a.ativo ? '#4b5563' : '#4ade80', fontFamily: "'Press Start 2P', monospace", fontSize: '0.32rem', cursor: 'pointer',
+                  }}>{a.ativo ? '○' : '●'}</button>
+                </div>
               ))}
             </div>
           </div>
