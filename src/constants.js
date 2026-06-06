@@ -1,7 +1,7 @@
 export const LEVELS = [
-  { name: 'Neófito',      min: 0,   max: 49,  color: '#9ca3af' },
-  { name: 'Conjurador',   min: 50,  max: 119, color: '#60a5fa' },
-  { name: 'Arcanista',    min: 120, max: 219, color: '#c084fc' },
+  { name: 'Aprendiz',     min: 0,   max: 49,  color: '#9ca3af' },
+  { name: 'Mago',         min: 50,  max: 119, color: '#60a5fa' },
+  { name: 'Feiticeiro',   min: 120, max: 219, color: '#c084fc' },
   { name: 'Planeswalker', min: 220, max: 349, color: '#fbbf24' },
   { name: 'Lendário',     min: 350, max: 9999,color: '#f87171' },
 ]
@@ -21,12 +21,12 @@ export const PENALTY_THRESHOLDS = [
 ]
 
 export const DEFAULT_PENALTIES = [
-  { id: 'p1', titulo: 'Lavar a louça por 3 dias',        nivel: 'leve',   icone: '🍽' },
-  { id: 'p2', titulo: 'Varrer a casa',                    nivel: 'leve',   icone: '🧹' },
-  { id: 'p3', titulo: 'Sem videogame por uma semana',     nivel: 'media',  icone: '🎮' },
-  { id: 'p4', titulo: 'Ajoelhar no milho por 5 minutos', nivel: 'media',  icone: '🌽' },
-  { id: 'p5', titulo: 'Sem celular por uma semana',       nivel: 'severa', icone: '📵' },
-  { id: 'p6', titulo: 'Escrever carta de desculpa',       nivel: 'severa', icone: '✉' },
+  { id: 'p1', titulo: 'Lavar a louça por 3 dias',         nivel: 'leve',   icone: '🍽' },
+  { id: 'p2', titulo: 'Varrer a casa',                     nivel: 'leve',   icone: '🧹' },
+  { id: 'p3', titulo: 'Sem videogame por uma semana',      nivel: 'media',  icone: '🎮' },
+  { id: 'p4', titulo: 'Ajoelhar no milho por 5 minutos',  nivel: 'media',  icone: '🌽' },
+  { id: 'p5', titulo: 'Sem celular por uma semana',        nivel: 'severa', icone: '📵' },
+  { id: 'p6', titulo: 'Escrever carta de desculpa',        nivel: 'severa', icone: '✉' },
 ]
 
 export const PERFIS = [
