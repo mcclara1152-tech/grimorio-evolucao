@@ -145,7 +145,7 @@ export default function App() {
   const [showWishForm, setShowWishForm] = useState(false)
   const [wishForm, setWishForm] = useState({ titulo: '', descricao: '' })
   const [approveModal, setApproveModal] = useState(null)
-  const [approveData, setApproveData] = useState({ xp_custo: 30, raridade: 'raro' })
+  const [approveData, setApproveData] = useState({ xp_custo: 30, raridade: 'raro', condicoes: '' })
   const [rejectModal, setRejectModal] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
   const [showPenaltyModal, setShowPenaltyModal] = useState(false)
@@ -335,6 +335,7 @@ export default function App() {
       status: 'aprovado',
       xp_custo: Number(approveData.xp_custo),
       raridade: approveData.raridade,
+      condicoes: approveData.condicoes || null,
       updated_at: new Date().toISOString(),
     }).eq('id', approveModal.id).select().single()
     if (data) setDesejos(d => d.map(x => x.id === data.id ? data : x))
@@ -819,7 +820,15 @@ export default function App() {
             </select>
             <div style={{ fontSize: '0.36rem', color: '#6b7280', marginBottom: 8 }}>XP PARA RESGATAR:</div>
             <input type="number" value={approveData.xp_custo} onChange={e => setApproveData(d => ({ ...d, xp_custo: e.target.value }))}
-              style={{ display: 'block', width: '100%', background: '#080810', border: '2px solid #1a1a2e', color: '#e2d9c5', padding: '10px 8px', marginBottom: 14 }} />
+              style={{ display: 'block', width: '100%', background: '#080810', border: '2px solid #1a1a2e', color: '#e2d9c5', padding: '10px 8px', marginBottom: 12 }} />
+            <div style={{ fontSize: '0.36rem', color: '#6b7280', marginBottom: 8 }}>CONDIÇÕES (OPCIONAL):</div>
+            <textarea
+              placeholder="Ex: Só vale se terminar as tarefas da semana antes"
+              value={approveData.condicoes}
+              onChange={e => setApproveData(d => ({ ...d, condicoes: e.target.value }))}
+              rows={3}
+              style={{ display: 'block', width: '100%', background: '#080810', border: '2px solid #fbbf2444', color: '#e2d9c5', padding: '10px 8px', marginBottom: 14, resize: 'none', borderLeft: '3px solid #fbbf24' }}
+            />
             <div style={{ display: 'flex', gap: 8 }}>
               <PixelBtn color="#4ade80" bg="#031a08" border="#14532d" onClick={approveWish} fullWidth>★ CONFIRMAR</PixelBtn>
               <PixelBtn color="#6b7280" bg="#0d0d1a" border="#374151" onClick={() => setApproveModal(null)} fullWidth>CANCELAR</PixelBtn>
