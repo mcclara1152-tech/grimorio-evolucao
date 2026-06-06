@@ -319,6 +319,15 @@ export function WishCard({ wish, role, onApprove, onReject, onRedeem, currentXP 
           </div>
         )}
 
+        {wish.condicoes && wish.status === 'aprovado' && (
+          <div style={{ padding: '8px 10px', background: '#1a1400', border: '1px solid #fbbf2444', borderLeft: '3px solid #fbbf24', marginBottom: 8 }}>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.32rem', color: '#fbbf24', marginBottom: 4, letterSpacing: 1 }}>⚠ CONDIÇÕES</div>
+            <div style={{ fontSize: '0.7rem', color: '#e2d9c5', fontStyle: 'italic', fontFamily: 'monospace', lineHeight: 1.5 }}>
+              "{wish.condicoes}"
+            </div>
+          </div>
+        )}
+
         {(role === 'oraculo' || role === 'guardiao') && wish.status === 'pendente' && (
           <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
             <PixelBtn color="#4ade80" bg="#031a08" border="#166534" onClick={() => onApprove(wish)} fullWidth>★ APROVAR</PixelBtn>
