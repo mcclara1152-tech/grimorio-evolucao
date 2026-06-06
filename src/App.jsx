@@ -459,6 +459,7 @@ export default function App() {
           ] : [
             { key: 'desejos',    label: '★ DESEJOS' },
             { key: 'penalidades',label: `⚠ PENAS${activePenalties > 0 ? ` (${activePenalties})` : ''}` },
+            { key: 'regras',     label: '📖 REGRAS' },
             { key: 'historico',  label: '📜 LOG' },
           ]).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)} style={{
@@ -559,6 +560,76 @@ export default function App() {
             <div style={{ display: 'grid', gap: 14 }}>
               {penalidades.map(p => (
                 <PenaltyCard key={p.id} penalty={p} role={user.role} onConcluir={concluirPenalty} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── REGRAS ── */}
+        {tab === 'regras' && (
+          <div style={{ padding: '16px 12px' }}>
+            <div style={{ fontSize: '0.36rem', color: '#4b5563', letterSpacing: 3, marginBottom: 16 }}>── COMO FUNCIONA ──</div>
+
+            {/* Meta semanal */}
+            <div style={{ background: '#1a1400', border: '2px solid #fbbf2444', padding: 12, marginBottom: 16 }}>
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.4rem', color: '#fbbf24', marginBottom: 8 }}>★ META SEMANAL</div>
+              <div style={{ fontSize: '0.32rem', color: '#c4b5a0', lineHeight: 2 }}>
+                Feche a semana com XP positivo e ganhe +5 XP de bônus todo domingo!
+              </div>
+            </div>
+
+            {/* Ações bônus */}
+            <div style={{ fontSize: '0.36rem', color: '#fbbf24', letterSpacing: 2, marginBottom: 10 }}>+ BÔNUS</div>
+            <div style={{ display: 'grid', gap: 6, marginBottom: 20 }}>
+              {acoes.filter(a => a.tipo === 'positive').map(a => (
+                <div key={a.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', background: '#1a1400',
+                  border: '2px solid #fbbf2433',
+                }}>
+                  <div style={{ fontSize: '1rem', flexShrink: 0 }}>{a.icone}</div>
+                  <div style={{ flex: 1, fontFamily: "'Press Start 2P', monospace", fontSize: '0.36rem', color: '#c4b5a0', lineHeight: 1.8 }}>{a.titulo}</div>
+                  <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.55rem', color: '#fbbf24', textShadow: '0 0 6px #fbbf24' }}>+{a.xp}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Ações penalidade */}
+            <div style={{ fontSize: '0.36rem', color: '#f87171', letterSpacing: 2, marginBottom: 10 }}>− PENALIDADES DE XP</div>
+            <div style={{ display: 'grid', gap: 6, marginBottom: 20 }}>
+              {acoes.filter(a => a.tipo === 'negative').map(a => (
+                <div key={a.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', background: '#1a0303',
+                  border: '2px solid #7f1d1d33',
+                }}>
+                  <div style={{ fontSize: '1rem', flexShrink: 0 }}>{a.icone}</div>
+                  <div style={{ flex: 1, fontFamily: "'Press Start 2P', monospace", fontSize: '0.36rem', color: '#c4b5a0', lineHeight: 1.8 }}>{a.titulo}</div>
+                  <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.55rem', color: '#f87171', textShadow: '0 0 6px #f87171' }}>{a.xp}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Castigos físicos */}
+            <div style={{ fontSize: '0.36rem', color: '#f59e0b', letterSpacing: 2, marginBottom: 10 }}>⚠ CASTIGOS</div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              {[
+                { icone: '🍽', titulo: 'Lavar a louça por 3 dias', nivel: 'LEVE', color: '#f59e0b' },
+                { icone: '🧹', titulo: 'Varrer a casa', nivel: 'LEVE', color: '#f59e0b' },
+                { icone: '🎮', titulo: 'Sem videogame por uma semana', nivel: 'MÉDIO', color: '#f87171' },
+                { icone: '🌽', titulo: 'Ajoelhar no milho', nivel: 'MÉDIO', color: '#f87171' },
+                { icone: '📵', titulo: 'Sem celular por uma semana', nivel: 'SEVERO', color: '#dc2626' },
+                { icone: '✉', titulo: 'Escrever carta de desculpa', nivel: 'SEVERO', color: '#dc2626' },
+              ].map((p, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', background: '#1a0303',
+                  border: `2px solid ${p.color}33`,
+                }}>
+                  <div style={{ fontSize: '1rem', flexShrink: 0 }}>{p.icone}</div>
+                  <div style={{ flex: 1, fontFamily: "'Press Start 2P', monospace", fontSize: '0.36rem', color: '#c4b5a0', lineHeight: 1.8 }}>{p.titulo}</div>
+                  <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.32rem', color: p.color }}>{p.nivel}</div>
+                </div>
               ))}
             </div>
           </div>
