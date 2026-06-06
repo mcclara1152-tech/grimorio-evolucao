@@ -62,6 +62,70 @@ function checkAutopenalty(xp, existingPenalties) {
   return null
 }
 
+// ── AUDIO ─────────────────────────────────────────────────────────────────────
+function playSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    if (type === 'positive') {
+      osc.frequency.setValueAtTime(523, ctx.currentTime)
+      osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1)
+      osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2)
+      gain.gain.setValueAtTime(0.3, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.4)
+    } else if (type === 'negative') {
+      osc.frequency.setValueAtTime(220, ctx.currentTime)
+      osc.frequency.setValueAtTime(180, ctx.currentTime + 0.15)
+      gain.gain.setValueAtTime(0.3, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.4)
+    } else if (type === 'levelup') {
+      const notes = [523, 659, 784, 1047]
+      notes.forEach((freq, i) => {
+        const o = ctx.createOscillator()
+        const g = ctx.createGain()
+        o.connect(g)
+        g.connect(ctx.destination)
+        o.frequency.value = freq
+        g.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.12)
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.3)
+        o.start(ctx.currentTime + i * 0.12)
+        o.stop(ctx.currentTime + i * 0.12 + 0.3)
+      })
+    } else if (type === 'bonus') {
+      const notes = [784, 1047, 1319]
+      notes.forEach((freq, i) => {
+        const o = ctx.createOscillator()
+        const g = ctx.createGain()
+        o.connect(g)
+        g.connect(ctx.destination)
+        o.frequency.value = freq
+        g.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.1)
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.25)
+        o.start(ctx.currentTime + i * 0.1)
+        o.stop(ctx.currentTime + i * 0.1 + 0.25)
+      })
+    }
+  } catch(e) {}
+}
+
+// ── META SEMANAL ──────────────────────────────────────────────────────────────
+function getWeekStart() {
+  const now = new Date()
+  const day = now.getDay()
+  const diff = now.getDate() - day
+  const start = new Date(now.setDate(diff))
+  start.setHours(0, 0, 0, 0)
+  return start.toISOString()
+}
+
 export default function App() {
   const [user, setUser] = useState(null)
   const [xp, setXp] = useState(0)
@@ -85,8 +149,12 @@ export default function App() {
   const [rejectModal, setRejectModal] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
   const [showPenaltyModal, setShowPenaltyModal] = useState(false)
+  const [confirmModal, setConfirmModal] = useState(null)
+  const [weeklyBonus, setWeeklyBonus] = useState(false)
+  const [levelUpSprite, setLevelUpSprite] = useState(false)
   const toastTimer = useRef(null)
   const prevLevelIdx = useRef(0)
+  const audioCtx = useRef(null)
 
   const isOraculo = user?.role === 'oraculo' || user?.role === 'guardiao'
   const levelIdx = getLevelIndex(xp)
@@ -125,6 +193,25 @@ export default function App() {
     if (histData) setHistorico(histData)
     if (desejosData) setDesejos(desejosData)
     if (penData) setPenalidades(penData)
+
+    // Verificar meta semanal
+    if (xpData && xpData.total > 0) {
+      const weekStart = getWeekStart()
+      const { data: weekHist } = await supabase.from('historico')
+        .select('xp')
+        .gte('created_at', weekStart)
+      if (weekHist) {
+        const weekXp = weekHist.reduce((acc, h) => acc + h.xp, 0)
+        const { data: bonusCheck } = await supabase.from('historico')
+          .select('id')
+          .eq('acao_titulo', 'BÔNUS SEMANAL')
+          .gte('created_at', weekStart)
+          .single()
+        if (weekXp > 0 && !bonusCheck) {
+          // Há XP positivo essa semana e bônus ainda não foi dado
+        }
+      }
+    }
     setLoading(false)
   }
 
@@ -135,6 +222,15 @@ export default function App() {
   }
 
   async function applyAction(acao) {
+    // Pedir confirmação para ações negativas
+    if (acao.xp < 0) {
+      setConfirmModal(acao)
+      return
+    }
+    await executeAction(acao)
+  }
+
+  async function executeAction(acao) {
     const newXp = Math.max(-99, xp + acao.xp)
     const newLevelIdx = getLevelIndex(newXp)
 
@@ -143,7 +239,11 @@ export default function App() {
       setLevelUpName(LEVELS[newLevelIdx].name)
       setLevelUpColor(LEVELS[newLevelIdx].color)
       setLevelUpShow(true)
-      setTimeout(() => setLevelUpShow(false), 2500)
+      setLevelUpSprite(true)
+      playSound('levelup')
+      setTimeout(() => { setLevelUpShow(false); setLevelUpSprite(false) }, 3000)
+    } else {
+      playSound(acao.xp > 0 ? 'positive' : 'negative')
     }
 
     setParticleColor(acao.xp > 0 ? '#fbbf24' : '#f87171')
@@ -178,6 +278,34 @@ export default function App() {
         if (newPen) {
           setPenalidades(p => [newPen, ...p])
           showToast(`⚠ ${threshold.label} ATIVADA!`, 'neg')
+          return
+        }
+      }
+    }
+
+    // Verificar meta semanal — se for domingo e XP positivo semanal
+    const today = new Date()
+    if (today.getDay() === 0 && acao.xp > 0) {
+      const weekStart = getWeekStart()
+      const { data: weekHist } = await supabase.from('historico')
+        .select('xp').gte('created_at', weekStart)
+      if (weekHist) {
+        const weekXp = weekHist.reduce((acc, h) => acc + h.xp, 0)
+        const { data: bonusCheck } = await supabase.from('historico')
+          .select('id').eq('acao_titulo', 'BÔNUS SEMANAL').gte('created_at', weekStart)
+        if (weekXp > 0 && (!bonusCheck || bonusCheck.length === 0)) {
+          const bonusXp = Math.max(-99, newXp + 5)
+          await supabase.from('xp').update({ total: bonusXp }).eq('jogador_id', '00000000-0000-0000-0000-000000000003')
+          setXp(bonusXp)
+          const { data: bonusHist } = await supabase.from('historico').insert({
+            acao_titulo: 'BÔNUS SEMANAL', xp: 5, tipo: 'positive',
+            aplicado_por: user.id, aplicado_por_nome: 'Sistema',
+          }).select().single()
+          if (bonusHist) setHistorico(h => [bonusHist, ...h])
+          setWeeklyBonus(true)
+          playSound('bonus')
+          setTimeout(() => setWeeklyBonus(false), 3000)
+          showToast('★ BÔNUS SEMANAL +5 XP!', 'pos')
           return
         }
       }
@@ -255,6 +383,16 @@ export default function App() {
     showToast('✓ PENALIDADE CONCLUÍDA', 'pos')
   }
 
+  async function deleteHistoricoItem(item) {
+    const newXp = Math.max(-99, xp - item.xp)
+    setXp(newXp)
+    await supabase.from('xp').update({ total: newXp, updated_at: new Date().toISOString() })
+      .eq('jogador_id', '00000000-0000-0000-0000-000000000003')
+    await supabase.from('historico').delete().eq('id', item.id)
+    setHistorico(h => h.filter(x => x.id !== item.id))
+    showToast('AÇÃO DESFEITA', 'info')
+  }
+
   const roleColor = { oraculo: '#fbbf24', guardiao: '#60a5fa', jogador: '#c084fc' }
   const roleLabel = { oraculo: '🔮 ORÁCULO', guardiao: '⚔ GUARDIÃO', jogador: '★ JOGADOR' }
 
@@ -302,6 +440,12 @@ export default function App() {
             <div style={{ fontSize: '0.32rem', color: '#4b5563', letterSpacing: 1, marginBottom: 10 }}>PONTOS DE XP</div>
             <XPBlocks pct={progress} color={level.color} />
             {nextLevel && <div style={{ fontSize: '0.3rem', color: '#4b5563', marginTop: 6 }}>PRÓXIMO: {nextLevel.name.toUpperCase()} ({nextLevel.min - xp}XP)</div>}
+            <div style={{ marginTop: 10, padding: '6px 8px', background: '#0a0a18', border: '1px solid #1a1a2e' }}>
+              <div style={{ fontSize: '0.28rem', color: '#4b5563', letterSpacing: 1, marginBottom: 4 }}>META SEMANAL</div>
+              <div style={{ fontSize: '0.32rem', color: xp > 0 ? '#fbbf24' : '#f87171' }}>
+                {xp > 0 ? `★ SALDO POSITIVO! +5 XP BÔNUS NO DOMINGO` : '⚠ SALDO NEGATIVO — SEM BÔNUS'}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -439,6 +583,18 @@ export default function App() {
                   <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.6rem', color: item.xp > 0 ? '#fbbf24' : '#f87171', textShadow: `0 0 6px ${item.xp > 0 ? '#fbbf24' : '#f87171'}` }}>
                     {item.xp > 0 ? `+${item.xp}` : item.xp}
                   </div>
+                  {isOraculo && (
+                    <button onClick={() => deleteHistoricoItem(item)} style={{
+                      marginLeft: 6, padding: '4px 6px',
+                      background: 'transparent',
+                      border: '1px solid #374151',
+                      color: '#4b5563',
+                      fontFamily: "'Press Start 2P', monospace",
+                      fontSize: '0.5rem',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }} title="Desfazer">✕</button>
+                  )}
                 </div>
               ))}
             </div>
@@ -508,6 +664,40 @@ export default function App() {
             <div style={{ marginTop: 12 }}>
               <PixelBtn color="#6b7280" bg="#0d0d1a" border="#374151" onClick={() => setShowPenaltyModal(false)} fullWidth>CANCELAR</PixelBtn>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM MODAL */}
+      {confirmModal && (
+        <div style={{ position: 'fixed', inset: 0, background: '#000000ee', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: '#0a0a18', border: '3px solid #7f1d1d', padding: 24, width: '100%', maxWidth: 360, textAlign: 'center', boxShadow: '0 0 40px #f8717133' }}>
+            <div style={{ fontSize: '0.9rem', marginBottom: 12 }}>⚠</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.45rem', color: '#f87171', marginBottom: 8, letterSpacing: 1 }}>TEM CERTEZA?</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.4rem', color: '#e2d9c5', marginBottom: 6, lineHeight: 1.8 }}>{confirmModal.icone} {confirmModal.titulo}</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.6rem', color: '#f87171', marginBottom: 20, textShadow: '0 0 8px #f87171' }}>{confirmModal.xp} XP</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={async () => { const a = confirmModal; setConfirmModal(null); await executeAction(a) }} style={{
+                flex: 1, padding: '12px 0', background: '#1a0303', border: '2px solid #7f1d1d',
+                color: '#f87171', fontFamily: "'Press Start 2P', monospace", fontSize: '0.4rem', cursor: 'pointer',
+              }}>✕ APLICAR</button>
+              <button onClick={() => setConfirmModal(null)} style={{
+                flex: 1, padding: '12px 0', background: '#0d0d1a', border: '2px solid #1a1a2e',
+                color: '#6b7280', fontFamily: "'Press Start 2P', monospace", fontSize: '0.4rem', cursor: 'pointer',
+              }}>CANCELAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WEEKLY BONUS BANNER */}
+      {weeklyBonus && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000000cc', pointerEvents: 'none' }}>
+          <div style={{ textAlign: 'center', animation: 'levelup-pop 0.5s ease-out' }}>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '1rem', color: '#fbbf24', textShadow: '0 0 20px #fbbf24, 0 0 40px #fbbf24', animation: 'blink 0.4s infinite', marginBottom: 10 }}>
+              ★ BÔNUS SEMANAL! ★
+            </div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: '0.55rem', color: '#e2d9c5' }}>+5 XP CONQUISTADO!</div>
           </div>
         </div>
       )}
